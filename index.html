@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>25 Cards</title>
+<style>
+  :root {
+    --felt: #1f4d33; --felt-dark: #163825;
+    --card-face: #fdfdf8; --card-back: #7a1f2b;
+    --gold: #d4af37; --ink: #222;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(ellipse at center, var(--felt) 0%, var(--felt-dark) 100%);
+    min-height: 100vh; color: #eee;
+    display: flex; flex-direction: column; align-items: center; padding: 12px;
+  }
+  h1 { font-size: 1.6rem; letter-spacing: 4px; color: var(--gold); text-transform: uppercase; margin-bottom: 4px; }
+  .subtitle { font-size: .8rem; opacity: .7; margin-bottom: 12px; }
+
+  #setup { background: rgba(0,0,0,.35); border: 1px solid rgba(212,175,55,.4); border-radius: 12px;
+    padding: 20px 28px; text-align: center; max-width: 440px; }
+  #setup h2 { color: var(--gold); margin-bottom: 14px; font-size: 1.1rem; }
+  .field { margin-bottom: 14px; text-align: left; }
+  .field label { display: block; font-size: .8rem; opacity: .8; margin-bottom: 4px; }
+  .field input, .field select { width: 100%; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.3); color: #fff; font-size: .95rem; }
+  .btn { background: var(--gold); color: #1a1a1a; border: none; padding: 10px 26px; font-size: 1rem;
+    font-weight: 700; border-radius: 8px; cursor: pointer; letter-spacing: 1px; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.secondary { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+  .btn.small { padding: 6px 14px; font-size: .8rem; }
+
+  #table { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 1000px; }
+  .top-row { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px; font-size: .85rem; }
+  .scores { display: flex; gap: 14px; }
+  .score-chip { background: rgba(0,0,0,.35); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,.15); }
+  .score-chip.active { border-color: var(--gold); color: var(--gold); }
+
+  #packs { display: flex; gap: 14px; align-items: flex-start; justify-content: center; width: 100%;
+    flex-wrap: wrap; min-height: 130px; padding: 10px; background: rgba(0,0,0,.18); border-radius: 12px; }
+  .pack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .pack-label { font-size: .7rem; letter-spacing: 1px; opacity: .8; }
+  .pack-cards { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; max-width: 220px; }
+  .pack .card { width: 40px; height: 56px; }
+  .pack .card .corner { font-size: .6rem; top: 2px; left: 3px; }
+  .pack .card .corner.bottom { display: none; }
+  .pack .card .center { font-size: 1rem; }
+  .pack .card .puppet { bottom: 12px; font-size: .45rem; }
+  .pack .needs { font-size: .68rem; color: var(--gold); margin-top: 2px; }
+  .pack.pack-target { outline: 2px dashed var(--gold); outline-offset: 2px; border-radius: 10px; }
+  .pack.pack-target:hover { background: rgba(212,175,55,.15); }
+  .newpack { width: 40px; height: 56px; border: 2px dashed rgba(255,255,255,.3); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem; opacity: .5; }
+
+  .player-area { width: 100%; margin-top: 10px; background: rgba(0,0,0,.22); border-radius: 12px; padding: 10px 14px; }
+  .player-area.active { outline: 2px solid var(--gold); }
+  .pa-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .pa-name { font-weight: 700; color: var(--gold); }
+  .pa-goal { font-size: .8rem; opacity: .85; }
+  .goal-top { display: inline-flex; margin-left: 6px; }
+  .goal-top .card { width: 34px; height: 48px; }
+  .goal-top .card .corner { font-size: .55rem; }
+  .goal-top .card .center { font-size: .9rem; }
+  .goal-top .card .corner.bottom { display: none; }
+
+  .row-label { font-size: .68rem; letter-spacing: 1px; text-transform: uppercase; opacity: .6; margin: 6px 0 3px; }
+  .hand-row { display: flex; gap: 8px; justify-content: flex-start; flex-wrap: wrap; }
+  .hand-row .card { cursor: pointer; }
+  .hand-row .card:hover { transform: translateY(-8px); }
+  .hand-row .card.selected { transform: translateY(-14px); outline: 3px solid var(--gold); }
+  .hand-row .card.disabled { opacity: .4; cursor: not-allowed; }
+  .hand-row .card.disabled:hover { transform: none; }
+  .hidden-cards { display: flex; gap: 6px; }
+  .hidden-cards .card { width: 34px; height: 48px; }
+
+  .park-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .slot { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 44px; }
+  .slot-label { font-size: .6rem; opacity: .6; }
+  .slot .card { width: 34px; height: 48px; }
+  .slot .card .corner { font-size: .55rem; }
+  .slot .card .center { font-size: .9rem; }
+  .slot .card .corner.bottom { display: none; }
+  .slot .empty { width: 34px; height: 48px; border: 2px dashed rgba(255,255,255,.2); border-radius: 6px; }
+  .slot .top-mark { font-size: .55rem; color: var(--gold); }
+  .slot.park-target { outline: 2px dashed var(--gold); outline-offset: 2px; border-radius: 8px; }
+  .slot.park-target:hover { background: rgba(212,175,55,.2); }
+
+  .card { width: 64px; height: 90px; border-radius: 8px; position: relative; user-select: none; transition: transform .12s; }
+  .card.face-down { background: repeating-linear-gradient(45deg, var(--card-back), var(--card-back) 6px, #641822 6px, #641822 12px);
+    border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+  .card.face-up { background: var(--card-face); border: 2px solid #999; box-shadow: 0 2px 6px rgba(0,0,0,.5); color: var(--ink); }
+  .card .corner { position: absolute; top: 4px; left: 6px; font-size: .9rem; font-weight: 700; line-height: 1; }
+  .card .corner.bottom { top: auto; bottom: 4px; left: auto; right: 6px; transform: rotate(180deg); }
+  .card .center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 1.6rem; font-weight: 800; }
+  .card.red { color: #b3202c; } .card.black { color: #1c1c1c; }
+  .card.king .center { font-size: 1.3rem; }
+  .card.king .puppet { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    font-size: .55rem; letter-spacing: 1px; text-transform: uppercase; color: #b3202c; font-weight: 700; }
+
+  #controls { margin-top: 12px; display: flex; gap: 10px; align-items: center; }
+  #log { margin-top: 10px; width: 100%; max-width: 640px; max-height: 120px; overflow-y: auto;
+    background: rgba(0,0,0,.3); border-radius: 8px; padding: 8px 12px; font-size: .78rem; line-height: 1.5; opacity: .9; }
+  #log .turn-start { color: var(--gold); font-weight: 700; }
+  #log .win { color: #7dff9e; font-weight: 700; }
+  #log .recycle { color: #8fd3ff; }
+
+  #winner-banner { display: none; margin-top: 14px; background: rgba(212,175,55,.15); border: 2px solid var(--gold);
+    border-radius: 12px; padding: 16px 30px; text-align: center; animation: pop .4s ease; }
+  #winner-banner h2 { color: var(--gold); font-size: 1.4rem; margin-bottom: 8px; }
+  @keyframes pop { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .hint { font-size: .75rem; opacity: .7; margin-top: 8px; text-align: center; max-width: 600px; }
+  .pass-banner { margin-top: 10px; background: rgba(0,0,0,.5); border: 1px solid var(--gold); border-radius: 10px;
+    padding: 14px 20px; text-align: center; }
+</style>
+</head>
+<body>
+<h1>25 Cards</h1>
+<div class="subtitle">Build A&rarr;Q packs &middot; empty your 25-card goal deck to win &middot; King = Puppet (wild)</div>
+
+<div id="setup">
+  <h2>Game Setup</h2>
+  <div class="field">
+    <label>Opponent</label>
+    <select id="mode">
+      <option value="ai" selected>Play vs AI</option>
+      <option value="human">2 players (pass &amp; play)</option>
+    </select>
+  </div>
+  <div class="field"><label>Your name</label><input id="name0" type="text" placeholder="Player 1"></div>
+  <div class="field"><label>Opponent name</label><input id="name1" type="text" placeholder="CPU / Player 2"></div>
+  <button class="btn" id="startBtn">Deal Cards</button>
+</div>
+
+<div id="table">
+  <div class="top-row">
+    <div class="scores" id="scores"></div>
+    <button class="btn secondary small" id="resetBtn">New Game</button>
+  </div>
+
+  <div id="packs"></div>
+  <div class="hint" id="packHint"></div>
+
+  <div id="players"></div>
+
+  <div id="controls">
+    <button class="btn" id="playBtn" disabled>Play Selected</button>
+    <button class="btn secondary" id="newPackBtn" disabled>Start New Pack</button>
+    <button class="btn secondary" id="parkBtn" disabled>Park Selected</button>
+  </div>
+
+  <div id="passBanner" class="pass-banner" style="display:none;">
+    <div id="passText"></div><br>
+    <button class="btn" id="passBtn">I'm ready &mdash; show my hand</button>
+  </div>
+
+  <div id="log"></div>
+  <div id="winner-banner">
+    <h2 id="winnerName"></h2>
+    <div id="winnerDetail"></div><br>
+    <button class="btn" onclick="location.reload()">Play Again</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+  const RANK_VAL = Object.fromEntries(RANKS.map((r,i)=>[r,i+1])); // A=1..K=13
+  const SUITS = ["\u2660","\u2665","\u2666","\u2663"];
+  const SUITE_RED = new Set(["\u2665","\u2666"]);
+  const HAND_SIZE = 5, GOAL_SIZE = 25, NUM_SLOTS = 4;
+  const $ = id => document.getElementById(id);
+
+  let state = null, selected = null, humanSeat = 0, aiSeat = 1, hotseat = false, passLock = false;
+
+  function makeDeck(prefix) {
+    const c = [];
+    for (const s of SUITS) for (const r of RANKS) c.push({ id: prefix+s+r, rank: RANK_VAL[r], suit: s });
+    return c;
+  }
+  function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+  const rankName = r => RANKS[r-1];
+  const cardName = c => rankName(c.rank) + c.suit;
+  const isPuppet = c => c.rank === 13;
+
+  function startGame() {
+    hotseat = $("mode").value === "human";
+    const n0 = $("name0").value.trim() || "Player 1";
+    const n1 = $("name1").value.trim() || (hotseat ? "Player 2" : "CPU");
+    // 2 decks (104 cards)
+    let stock = shuffle([...makeDeck("A_"), ...makeDeck("B_")]);
+    const deal = n => stock.splice(0, n);
+    state = {
+      players: [
+        { name: n0, hand: deal(HAND_SIZE), goal: deal(GOAL_SIZE), parking: [[],[],[],[]] },
+        { name: n1, hand: deal(HAND_SIZE), goal: deal(GOAL_SIZE), parking: [[],[],[],[]] },
+      ],
+      draw: stock, packs: [], turn: 0, winner: -1,
+    };
+    $("setup").style.display = "none";
+    $("table").style.display = "flex";
+    log(`Game started: ${n0} vs ${n1}. Draw pile: ${state.draw.length}.`, "turn-start");
+    log("Refill to 5 at the start of each turn. Kings are PUPPETS (any rank).", "turn-start");
+    beginTurn();
+    render();
+  }
+
+  function log(msg, cls) {
+    const el = document.createElement("div");
+    if (cls) el.className = cls;
+    el.textContent = msg;
+    $("log").appendChild(el);   // chronological: oldest at top, newest at bottom
+    $("log").scrollTop = $("log").scrollHeight;   // auto-scroll to newest
+  }
+
+  // Total cards must always = 104. Call after every state change to catch leaks.
+  function checkInvariant(label) {
+    let total = state.draw.length;
+    for (const pk of state.packs) total += pk.length;
+    for (const pl of state.players) {
+      total += pl.hand.length + pl.goal.length;
+      for (const s of pl.parking) total += s.length;
+    }
+    if (total !== 104) log(`⚠ CARD LEAK [${label}]: total=${total} (expected 104) — draw=${state.draw.length} packs=${state.packs.reduce((a,p)=>a+p.length,0)} P1(h${state.players[0].hand.length} g${state.players[0].goal.length} p${state.players[0].parking.reduce((a,s)=>a+s.length,0)}) P2(h${state.players[1].hand.length} g${state.players[1].goal.length} p${state.players[1].parking.reduce((a,s)=>a+s.length,0)})`, "error");
+  }
+
+  const goalTop = p => p.goal.length ? p.goal[p.goal.length-1] : null;
+  const packNeeds = pk => pk.length === 0 ? 1 : pk[pk.length-1].rank + 1; // 1..13
+  const fits = (c, pk) => isPuppet(c) || c.rank === packNeeds(pk);
+  const packComplete = pk => pk.length === 12;
+
+  function beginTurn() {
+    const p = state.players[state.turn];
+    const before = p.hand.length;
+    while (p.hand.length < HAND_SIZE && state.draw.length) p.hand.push(state.draw.pop());
+    if (p.hand.length > before) log(`${p.name} drew ${p.hand.length-before} to refill (hand=${p.hand.length}).`);
+    checkInvariant("beginTurn");
+  }
+
+  function advanceTurn() {
+    for (let step=0; step<2; step++) {
+      state.turn = (state.turn+1) % 2;
+      if (state.winner < 0) break;
+    }
+    beginTurn();
+  }
+
+  function place(packIdx, src, idx) {
+    const p = state.players[state.turn];
+    let c;
+    if (src === "hand") c = p.hand.splice(idx,1)[0];
+    else if (src === "goal") c = p.goal.pop();
+    else c = p.parking[idx].pop();
+    if (isPuppet(c)) c.rank = packNeeds(state.packs[packIdx]); // Puppet lands as needed rank
+    state.packs[packIdx].push(c);
+    log(`${p.name} ${src==="goal"?"[goal] ":src==="slot"?"[slot"+(idx+1)+"] ":"[hand] "}played ${cardName(c)} -> pack ${packIdx+1}.`);
+    recycle();
+    if (p.goal.length === 0) { p.done = true; state.winner = state.turn; log(`*** ${p.name} emptied their goal deck and WINS! ***`,"win"); return; }
+    // A play does NOT end the turn. If the hand is empty, always draw back up to 5.
+    if (p.hand.length === 0) {
+      const before = p.hand.length;
+      while (p.hand.length < HAND_SIZE && state.draw.length) p.hand.push(state.draw.pop());
+      const drew = p.hand.length - before;
+      if (drew > 0) log(`${p.name} hand empty — drew ${drew} more (hand=${p.hand.length}).`);
+      if (p.hand.length > HAND_SIZE) log(`⚠ INVARIANT: ${p.name} hand=${p.hand.length} > ${HAND_SIZE}`);
+    }
+    checkInvariant("place");
+  }
+
+  function recycle() {
+    const remaining = [];
+    for (const pk of state.packs) {
+      if (packComplete(pk)) {
+        shuffle(pk);
+        for (const c of pk) state.draw.push(c); // to the BOTTOM
+        log(`Pack complete (A-Q) — ${pk.length} cards shuffled to the bottom of the draw pile.`, "recycle");
+      } else remaining.push(pk);
+    }
+    state.packs = remaining;
+  }
+
+  // Parking is the ONLY way to end a turn. One card, then pass.
+  function park(slot, handIdx) {
+    const p = state.players[state.turn];
+    const c = p.hand.splice(handIdx,1)[0];
+    p.parking[slot].push(c);
+    log(`${p.name} parked ${cardName(c)} in slot ${slot+1} — turn ends.`);
+    checkInvariant("park");
+    advanceTurn();
+  }
+
+  // legal moves for a player
+  function movesFor(p) {
+    const moves = [];
+    const gt = goalTop(p);
+    if (gt) state.packs.forEach((pk,i)=>{ if (fits(gt,pk)) moves.push({pack:i, src:"goal", idx:0}); });
+    p.hand.forEach((c,h)=> state.packs.forEach((pk,i)=>{ if (fits(c,pk)) moves.push({pack:i, src:"hand", idx:h}); }));
+    p.parking.forEach((slot,s)=>{ if (slot.length) state.packs.forEach((pk,i)=>{ if (fits(slot[slot.length-1],pk)) moves.push({pack:i, src:"slot", idx:s}); }); });
+    return moves;
+  }
+
+  // ---------- AI: plays a full turn (many plays), then parks ----------
+  function aiTurn() {
+    const p = state.players[state.turn];
+    const opp = state.players[1-state.turn];
+    const og = goalTop(opp);
+    const oppNeed = og && og.rank !== 13 ? og.rank : -1;
+    let plays = 0;
+    while (state.winner < 0) {
+      const moves = movesFor(p);
+      const canStart = c => isPuppet(c) || c.rank === 1;
+      // Can we start a new pack? (goal-top, hand, or slot-top that is Ace/Puppet)
+      const gt = goalTop(p);
+      const startOpts = [];
+      if (gt && canStart(gt)) startOpts.push({src:"goal", idx:0});
+      p.hand.forEach((c,h)=>{ if (canStart(c)) startOpts.push({src:"hand", idx:h}); });
+      p.parking.forEach((slot,s)=>{ if (slot.length && canStart(slot[slot.length-1])) startOpts.push({src:"slot", idx:s}); });
+
+      if (!moves.length && !startOpts.length) break;   // nothing to do
+      const completes = m => state.packs[m.pack].length === 11;
+      // (a) complete a pack
+      let pick = null, isNewPack = false;
+      for (const m of moves) if (completes(m)) { pick = m; break; }
+      // (b) burn goal top into an existing pack
+      if (!pick) for (const m of moves) if (m.src === "goal") { pick = m; break; }
+      // (c) hand/slot into existing pack, non-blocking, low-rank first
+      if (!pick) {
+        const rest = moves.filter(m => m.src !== "goal");
+        const pr = m => m.src === "slot" ? p.parking[m.idx][p.parking[m.idx].length-1].rank : p.hand[m.idx].rank;
+        rest.sort((a,b)=>{
+          const ba = oppNeed>0 && pr(a)===oppNeed, bb = oppNeed>0 && pr(b)===oppNeed;
+          if (ba!==bb) return ba-bb;
+          const sa=(pr(a)===1||pr(a)===13)?100:pr(a), sb=(pr(b)===1||pr(b)===13)?100:pr(b);
+          return sa-sb;
+        });
+        if (rest.length) pick = rest[0];
+      }
+      // (d) no existing-pack move — start a new pack with an Ace/Puppet
+      if (!pick && startOpts.length) {
+        // prefer goal-top, then hand, then slot; prefer Puppet over Ace (keep aces? no—use them)
+        startOpts.sort((a,b)=> (a.src==="goal"?-1:0)-(b.src==="goal"?-1:0) || (a.src==="hand"?0:1)-(b.src==="hand"?0:1));
+        pick = startOpts[0]; isNewPack = true;
+      }
+      if (!pick) break;
+      if (isNewPack) {
+        state.packs.push([]);
+        place(state.packs.length-1, pick.src, pick.idx);
+      } else {
+        place(pick.pack, pick.src, pick.idx);
+      }
+      plays++;
+      // Aggressive: keep playing even if it feeds the opponent, UNLESS every remaining
+      // move feeds them AND we have no goal-burn moves left. This keeps the game moving.
+      if (plays >= 3) {
+        const after = movesFor(p);
+        const pr = m => m.src === "slot" ? p.parking[m.idx][p.parking[m.idx].length-1].rank : p.hand[m.idx].rank;
+        const allFeed = after.length && after.every(m => oppNeed>0 && pr(m)===oppNeed);
+        const hasGoalBurn = after.some(m => m.src === "goal");
+        if (allFeed && !hasGoalBurn) break;   // only stop if truly stuck
+      }
+    }
+    // end the turn by parking one card
+    if (state.winner < 0) {
+      if (p.hand.length) {
+        let worst = 0;
+        for (let i = 1; i < p.hand.length; i++)
+          if ((p.hand[i].rank!==1&&p.hand[i].rank!==13) && (p.hand[worst].rank===1||p.hand[worst].rank===13)) worst = i;
+        for (let i = 1; i < p.hand.length; i++) if (p.hand[i].rank > p.hand[worst].rank) worst = i;
+        let slot = 0; for (let s = 1; s < NUM_SLOTS; s++) if (p.parking[s].length < p.parking[slot].length) slot = s;
+        park(slot, worst);
+      } else advanceTurn();
+    }
+  }
+
+  // ---------- Render ----------
+  function cardEl(c, faceUp=true, small=false) {
+    const d = document.createElement("div");
+    d.className = "card " + (faceUp?"face-up":"face-down");
+    if (faceUp) {
+      d.classList.add(SUITE_RED.has(c.suit)?"red":"black");
+      if (isPuppet(c)) d.classList.add("king");
+      d.innerHTML =
+        `<div class="corner">${rankName(c.rank)}${c.suit}</div>` +
+        `<div class="center">${rankName(c.rank)}</div>` +
+        (isPuppet(c)?`<div class="puppet">puppet</div>`:"") +
+        `<div class="corner bottom">${rankName(c.rank)}${c.suit}</div>`;
+    }
+    return d;
+  }
+
+  function render() {
+    if (passLock) return;
+    // scores
+    const sc = $("scores"); sc.innerHTML = "";
+    state.players.forEach((p,i)=>{
+      const chip = document.createElement("div");
+      chip.className = "score-chip" + (i===state.turn && state.winner<0 ? " active":"");
+      chip.textContent = p.done ? `${p.name} \u2713` : `${p.name} (goal ${p.goal.length})`;
+      sc.appendChild(chip);
+    });
+
+    // packs
+    const pk = $("packs"); pk.innerHTML = "";
+    if (!state.packs.length) {
+      const np = document.createElement("div"); np.className="newpack"; np.textContent="+";
+      pk.appendChild(np);
+      $("packHint").textContent = "No packs yet — play an Ace (or a Puppet) to start one.";
+    } else {
+      $("packHint").textContent = "";
+      // Determine if a card is selected and which packs it can target
+      const selCard = (() => {
+        if (!selected) return null;
+        const pp = state.players[state.turn];
+        return selected.src==="hand" ? pp.hand[selected.idx] : selected.src==="slot" ? pp.parking[selected.idx][pp.parking[selected.idx].length-1] : goalTop(pp);
+      })();
+      const canTarget = state.winner<0 && (hotseat ? true : state.turn===humanSeat) && selCard;
+      state.packs.forEach((p,i)=>{
+        const el = document.createElement("div"); el.className="pack";
+        const isTarget = canTarget && fits(selCard, p);
+        if (isTarget) el.classList.add("pack-target");
+        el.innerHTML = `<div class="pack-label">Pack ${i+1}${isTarget?" ▼":""}</div>`;
+        const cards = document.createElement("div"); cards.className="pack-cards";
+        p.forEach(c=>cards.appendChild(cardEl(c)));
+        el.appendChild(cards);
+        const needs = document.createElement("div"); needs.className="needs";
+        needs.textContent = "needs " + rankName(packNeeds(p));
+        el.appendChild(needs);
+        if (isTarget) {
+          el.style.cursor = "pointer";
+          el.addEventListener("click",(e)=>{ e.stopPropagation(); playIntoPack(i); });
+        }
+        pk.appendChild(el);
+      });
+    }
+
+    // players
+    const pa = $("players"); pa.innerHTML = "";
+    const viewer = hotseat ? state.turn : humanSeat;
+    state.players.forEach((p,i)=>{
+      const mine = i===viewer;
+      const area = document.createElement("div");
+      area.className = "player-area" + (i===state.turn && state.winner<0 ? " active":"");
+      const head = document.createElement("div"); head.className="pa-head";
+      head.innerHTML = `<span class="pa-name">${i===state.turn?"\u25B6 ":""}${p.name}</span>`;
+      const goal = document.createElement("span"); goal.className="pa-goal";
+      goal.innerHTML = `goal ${p.goal.length}`;
+      const gt = goalTop(p);
+      if (gt) {
+        const g = document.createElement("span"); g.className="goal-top";
+        const gtEl = cardEl(gt);
+        const canActGoal = state.winner<0 && i===state.turn;
+        // goal-top is always playable (fits a pack, or starts one if Ace/Puppet)
+        if (canActGoal) {
+          gtEl.style.cursor = "pointer";
+          if (selected && selected.src==="goal") gtEl.classList.add("selected");
+          gtEl.addEventListener("click",()=>{ selected = (selected&&selected.src==="goal")?null:{src:"goal",idx:0}; render(); });
+        }
+        g.appendChild(gtEl); goal.appendChild(g);
+      }
+      head.appendChild(goal);
+      area.appendChild(head);
+
+      if (mine) {
+        // hand
+        const hl = document.createElement("div"); hl.className="row-label"; hl.textContent="Hand"; area.appendChild(hl);
+        const hr = document.createElement("div"); hr.className="hand-row";
+        const canAct = state.winner<0 && i===state.turn;
+        const legal = new Set(movesFor(p).filter(m=>m.src==="hand").map(m=>m.idx));
+        p.hand.forEach((c,h)=>{
+          const el = cardEl(c);
+          // a hand card is playable if it fits a pack OR can start a new pack (Ace/Puppet)
+          const playable = legal.has(h) || isPuppet(c) || c.rank === 1;
+          if (canAct && !playable) el.classList.add("disabled");
+          if (selected && selected.src==="hand" && selected.idx===h) el.classList.add("selected");
+          el.addEventListener("click",()=>{ if(!canAct) return; selected = (selected&&selected.src==="hand"&&selected.idx===h)?null:{src:"hand",idx:h}; render(); });
+          hr.appendChild(el);
+        });
+        area.appendChild(hr);
+        // parking
+        const pl = document.createElement("div"); pl.className="row-label"; pl.textContent="Parking (LIFO — only the top of each slot can be played)"; area.appendChild(pl);
+        const prow = document.createElement("div"); prow.className="park-row";
+        const canActPark = state.winner<0 && i===state.turn;
+        const parkingTarget = canActPark && selected && selected.src==="hand"; // a hand card is selected -> slots are park targets
+        p.parking.forEach((slot,s)=>{
+          const se = document.createElement("div"); se.className="slot";
+          if (parkingTarget) se.classList.add("park-target");
+          se.innerHTML = `<div class="slot-label">${s+1}${parkingTarget?" ▼":""}</div>`;
+          if (!slot.length) { const e=document.createElement("div"); e.className="empty"; se.appendChild(e); }
+          else {
+            slot.forEach((c,j)=>{
+              const el = cardEl(c);
+              const isTop = j===slot.length-1;
+              if (isTop) {
+                const m=document.createElement("div"); m.className="top-mark"; m.textContent="top"; se.appendChild(m);
+                if (canActPark && !parkingTarget) {
+                  el.style.cursor = "pointer";
+                  if (selected && selected.src==="slot" && selected.idx===s) el.classList.add("selected");
+                  el.addEventListener("click",()=>{ selected = (selected&&selected.src==="slot"&&selected.idx===s)?null:{src:"slot",idx:s}; render(); });
+                }
+              }
+              se.appendChild(el);
+            });
+          }
+          // clicking the slot (when a hand card is selected) parks the card there
+          if (parkingTarget) {
+            se.style.cursor = "pointer";
+            se.addEventListener("click",(e)=>{ e.stopPropagation(); parkAtSlot(s, selected.idx); });
+          }
+          prow.appendChild(se);
+        });
+        area.appendChild(prow);
+      } else {
+        const parked = p.parking.reduce((a,s)=>a+s.length,0);
+        const hl = document.createElement("div"); hl.className="row-label"; hl.textContent="Hand (hidden)"; area.appendChild(hl);
+        const hr = document.createElement("div"); hr.className="hidden-cards";
+        for (let h=0;h<p.hand.length;h++) hr.appendChild(cardEl(null,false));
+        area.appendChild(hr);
+        area.insertAdjacentHTML("beforeend", `<div class="row-label">Parking: ${parked} card(s) (hidden)</div>`);
+      }
+      pa.appendChild(area);
+    });
+
+    // controls
+    const canAct = state.winner<0 && (hotseat ? true : state.turn===humanSeat);
+    $("playBtn").disabled = !(canAct && selected);
+    $("parkBtn").disabled = !(canAct && selected && selected.src==="hand");
+    // "Start New Pack" is enabled when the selected card is an Ace or Puppet
+    let selCard = null;
+    if (selected) {
+      const pp = state.players[state.turn];
+      selCard = selected.src==="hand" ? pp.hand[selected.idx] : selected.src==="slot" ? pp.parking[selected.idx][pp.parking[selected.idx].length-1] : goalTop(pp);
+    }
+    const canNewPack = canAct && selCard && (isPuppet(selCard) || selCard.rank === 1);
+    $("newPackBtn").disabled = !canNewPack;
+    $("playBtn").textContent = selected ? "Play Selected" : "Play Selected";
+
+    if (state.winner >= 0) {
+      $("winnerName").textContent = state.players[state.winner].name + " wins!";
+      $("winnerDetail").textContent = "Their 25-card goal deck is empty.";
+      $("winner-banner").style.display = "block";
+    }
+  }
+
+  function doPlay() {
+    if (!selected) return;
+    const p = state.players[state.turn];
+    const src = selected.src, idx = selected.idx;
+    const c = src==="hand" ? p.hand[idx] : src==="slot" ? p.parking[idx][p.parking[idx].length-1] : goalTop(p);
+    // Play into the best existing pack (longest pack that fits).
+    let packIdx = -1;
+    for (let i = 0; i < state.packs.length; i++) {
+      if (fits(c, state.packs[i])) {
+        if (packIdx < 0 || state.packs[i].length > state.packs[packIdx].length) packIdx = i;
+      }
+    }
+    if (packIdx >= 0) {
+      selected = null;
+      place(packIdx, src, idx);
+      afterMove();   // turn continues
+      return;
+    }
+    // No existing pack fits — an Ace/Puppet starts a new pack, otherwise not playable.
+    if (isPuppet(c) || c.rank === 1) { doNewPack(); return; }
+    selected = null; render();
+  }
+  // Play the selected card into a SPECIFIC pack (chosen by clicking the pack).
+  function playIntoPack(packIdx) {
+    if (!selected) return;
+    const p = state.players[state.turn];
+    const src = selected.src, idx = selected.idx;
+    const c = src==="hand" ? p.hand[idx] : src==="slot" ? p.parking[idx][p.parking[idx].length-1] : goalTop(p);
+    if (!fits(c, state.packs[packIdx])) { selected = null; render(); return; }
+    selected = null;
+    place(packIdx, src, idx);
+    afterMove();   // turn continues
+  }
+  // Force-start a new pack with the selected Ace/Puppet.
+  function doNewPack() {
+    if (!selected) return;
+    const p = state.players[state.turn];
+    const src = selected.src, idx = selected.idx;
+    const c = src==="hand" ? p.hand[idx] : src==="slot" ? p.parking[idx][p.parking[idx].length-1] : goalTop(p);
+    if (!(isPuppet(c) || c.rank === 1)) { selected = null; render(); return; }
+    state.packs.push([]);
+    const newIdx = state.packs.length - 1;
+    selected = null;
+    place(newIdx, src, idx);
+    log(`${p.name} started a NEW pack with ${cardName(c)}.`);
+    afterMove();   // turn continues
+  }
+
+  function doPark() {
+    // Fallback: if no slot was chosen, park into the shortest slot.
+    if (!selected || selected.src!=="hand") return;
+    const p = state.players[state.turn];
+    let slot=0; for (let s=1;s<NUM_SLOTS;s++) if (p.parking[s].length<p.parking[slot].length) slot=s;
+    parkAtSlot(slot, selected.idx);
+  }
+  // Park the selected hand card into a SPECIFIC slot (chosen by clicking the slot).
+  function parkAtSlot(slot, handIdx) {
+    if (!selected || selected.src!=="hand") return;
+    const acted = state.turn;
+    selected = null;
+    park(slot, handIdx);
+    afterMove(acted);   // turn ends -> pass to opponent
+  }
+
+  // afterMove is called after a PLAY (turn continues) or a PARK (turn ends).
+  // We detect a turn change by comparing to the seat that acted.
+  function afterMove(actedSeat) {
+    render();
+    if (state.winner >= 0) return;
+    const turnChanged = actedSeat !== undefined && actedSeat !== state.turn;
+    if (hotseat && turnChanged) { showPass(); return; }
+    if (state.turn === aiSeat) { setTimeout(()=>{ aiTurn(); afterMove(aiSeat); }, 500); return; }
+    render();
+  }
+
+  function showPass() {
+    passLock = true;
+    $("passText").textContent = `Pass to ${state.players[state.turn].name} — hand the device over.`;
+    $("passBanner").style.display = "block";
+    $("players").style.visibility = "hidden";
+    $("packs").style.visibility = "hidden";
+  }
+
+  $("startBtn").addEventListener("click", startGame);
+  $("resetBtn").addEventListener("click", ()=>location.reload());
+  $("playBtn").addEventListener("click", doPlay);
+  $("newPackBtn").addEventListener("click", doNewPack);
+  $("parkBtn").addEventListener("click", doPark);
+  $("passBtn").addEventListener("click", ()=>{
+    passLock = false;
+    $("passBanner").style.display = "none";
+    $("players").style.visibility = "visible";
+    $("packs").style.visibility = "visible";
+    selected = null;
+    render();
+  });
+})();
+</script>
+</body>
+</html>
